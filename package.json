@@ -1,0 +1,11 @@
+{
+  "name": "productivity-app-root",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "cd client && npm install && cd ../server && npm install",
+    "build": "cd client && npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

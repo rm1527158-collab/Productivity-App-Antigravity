@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 10px;
+        cursor: pointer;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 10px;
+        background: #f0f0f0;
+        border-radius: 5px;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Task API Test</h1>
+
+    <button onclick="testDailyTask()">Test Daily Task Creation</button>
+    <button onclick="testVisionTask()">Test Vision Task Creation</button>
+    <button onclick="getTasks()">Get All Tasks</button>
+
+    <div id="result"></div>
+
+    <script>
+      const API_BASE = "http://localhost:5000";
+      const USER_ID = "507f1f77bcf86cd799439011";
+
+      async function testDailyTask() {
+        const result = document.getElementById("result");
+        try {
+          const response = await fetch(`${API_BASE}/tasks`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": USER_ID,
+            },
+            body: JSON.stringify({
+              title: "Test Daily Task " + new Date().toLocaleTimeString(),
+              section: "topPriority",
+              scope: "daily",
+              date: new Date().toISOString().split("T")[0],
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            result.innerHTML = `<div class="success">✅ Daily task created successfully!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+          } else {
+            result.innerHTML = `<div class="error">❌ Error: ${data.message}</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+          }
+        } catch (error) {
+          result.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
+        }
+      }
+
+      async function testVisionTask() {
+        const result = document.getElementById("result");
+        try {
+          const response = await fetch(`${API_BASE}/tasks`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": USER_ID,
+            },
+            body: JSON.stringify({
+              title: "Test Vision Task " + new Date().toLocaleTimeString(),
+              section: "must",
+              scope: "weekly",
+              periodStart: new Date().toISOString().split("T")[0],
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            result.innerHTML = `<div class="success">✅ Vision task created successfully!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+          } else {
+            result.innerHTML = `<div class="error">❌ Error: ${data.message}</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+          }
+        } catch (error) {
+          result.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
+        }
+      }
+
+      async function getTasks() {
+        const result = document.getElementById("result");
+        try {
+          const response = await fetch(`${API_BASE}/tasks`, {
+            headers: {
+              "x-user-id": USER_ID,
+            },
+          });
+
+          const data = await response.json();
+          result.innerHTML = `<div class="success">✅ Fetched ${data.length} tasks</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (error) {
+          result.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
+        }
+      }
+    </script>
+  </body>
+</html>

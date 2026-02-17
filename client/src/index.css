@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Outfit:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@100..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem; /* Slightly tighter radius for that "clinical" look */
+    
+    /* PULMIFY THEME - DEFAULT */
+    /* Background: Light Cream/Beige #F7F7F0 or #F2F4E6 */
+    --background: 70 20% 95%; 
+    
+    /* Foreground: Very Dark Green #192E1B */
+    --foreground: 130 30% 14%;
+    
+    /* Card: Slightly lighter or darker than background depending on depth. 
+       Using pure white or very light cream for cards to pop. */
+    --card: 60 10% 98%;
+    --card-foreground: 130 30% 14%;
+    
+    /* Popover: Same as card */
+    --popover: 60 10% 98%;
+    --popover-foreground: 130 30% 14%;
+    
+    /* Primary: Dark Forest Green #2D4A30 */
+    --primary: 130 25% 23%;
+    --primary-foreground: 60 10% 96%;
+    
+    /* Secondary: Sage/Matcha #D9E3CC */
+    --secondary: 85 25% 85%;
+    --secondary-foreground: 130 30% 14%;
+    
+    /* Muted: Grayish Green #B0C499 */
+    --muted: 85 20% 90%;
+    --muted-foreground: 130 15% 40%;
+    
+    /* Accent: Olive #8C9E78 */
+    --accent: 85 20% 85%;
+    --accent-foreground: 130 30% 14%;
+    
+    /* Destructive: Muted Red */
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Border: Light Sage #C5D4B3 */
+    --border: 85 15% 80%;
+    
+    /* Input: Same as border or slightly lighter */
+    --input: 85 15% 80%;
+    
+    /* Ring: Focus color */
+    --ring: 130 25% 23%;
+  }
+
+  /* Keep legacy theme classes but re-mapped if necessary, or just override them */
+  /* For now, we make the root the "Pulmify" theme by default */
+  
+  .dark {
+    --background: 130 30% 10%; /* Dark Forest */
+    --foreground: 70 20% 90%; /* Light Sage Text */
+    --card: 130 25% 12%;
+    --card-foreground: 70 20% 90%;
+    --popover: 130 25% 12%;
+    --popover-foreground: 70 20% 90%;
+    --primary: 85 30% 80%; /* Light Sage for Primary in Dark mode */
+    --primary-foreground: 130 30% 10%;
+    --secondary: 130 20% 20%;
+    --secondary-foreground: 85 30% 80%;
+    --muted: 130 20% 20%;
+    --muted-foreground: 85 10% 60%;
+    --accent: 130 20% 25%;
+    --accent-foreground: 85 30% 80%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 130 20% 25%;
+    --input: 130 20% 25%;
+    --ring: 85 30% 80%;
+  }
+
+  /* Theme Overrides */
+  .theme-sunset {
+    --primary: 25 90% 45%; /* Deep Orange */
+    --primary-foreground: 25 10% 98%;
+    --secondary: 25 40% 90%;
+    --border: 25 30% 85%;
+    --background: 25 30% 97%;
+  }
+  .theme-ocean {
+    --primary: 195 80% 35%; /* Deep Teal */
+    --primary-foreground: 195 10% 98%;
+    --secondary: 195 40% 90%;
+    --border: 195 30% 85%;
+    --background: 195 30% 97%;
+  }
+  .theme-lavender {
+    --primary: 265 60% 45%; /* Royal Purple */
+    --primary-foreground: 265 10% 98%;
+    --secondary: 265 40% 90%;
+    --border: 265 30% 85%;
+    --background: 265 30% 97%;
+  }
+  .theme-rose {
+    --primary: 345 75% 45%; /* Deep Rose */
+    --primary-foreground: 345 10% 98%;
+    --secondary: 345 40% 90%;
+    --border: 345 30% 85%;
+    --background: 345 30% 97%;
+  }
+  .theme-midnight {
+    --primary: 230 60% 40%; /* Deep Blue */
+    --primary-foreground: 230 10% 98%;
+    --secondary: 230 40% 90%;
+    --border: 230 30% 85%;
+    --background: 230 30% 97%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground transition-colors duration-300 antialiased font-sans;
+  }
+}
+
+/* Glassmorphism utility */
+.glass {
+  @apply bg-white/50 backdrop-blur-md border border-white/20;
+}
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+}
+
+/* Hide scrollbar by default utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
