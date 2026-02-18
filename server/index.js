@@ -7,7 +7,8 @@ const getUser = require('./middleware/getUser');
 const app = express();
 
 // Connect to Database
-connectDB();
+// connectDB(); // Removed auto-connect for serverless compatibility
+
 
 // Middleware
 app.use(cors());
@@ -24,7 +25,11 @@ app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', timest
 
 const PORT = process.env.PORT || 5000;
 
+// Conditional DB Connection and Server Start
 if (require.main === module) {
+  // Connect to Database only if running directly
+  connectDB();
+
   const server = app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -39,5 +44,6 @@ if (require.main === module) {
     });
   });
 }
+
 
 module.exports = app;
