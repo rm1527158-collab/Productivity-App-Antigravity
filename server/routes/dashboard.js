@@ -205,10 +205,11 @@ router.get('/summary', async (req, res) => {
         })
         .sort({ date: 1, priorityRank: 1 })
         .limit(2)
-        .select('title priority section date'),
+        .select('title priority section date')
+        .lean(),
 
         // 10a. Active Habits
-        require('../models/Habit').find({ userId, active: true }),
+        require('../models/Habit').find({ userId, active: true }).lean(),
 
         // 10b. Completed Habit IDs for Today
         HabitOccurrence.find({
@@ -217,8 +218,8 @@ router.get('/summary', async (req, res) => {
             completed: true
         }).distinct('habitId'),
 
-        // 10c. All Occurrences (for streaks) - Potentially heavy, but needed for streaks
-        HabitOccurrence.find({ userId })
+        // 10c. All Occurrences (for streaks) - Optimized
+        HabitOccurrence.find({ userId }).select('habitId dateUTC').lean()
     ]);
 
     // ... (Processing logic remains similar but uses the results above)
@@ -257,7 +258,7 @@ router.get('/summary', async (req, res) => {
 
     // Pending Tasks Processing
     const pendingTasks = pendingTasksRaw.map(task => ({
-        ...task.toObject(),
+        ...task,
         isOverdue: new Date(task.date) < today
     }));
 
@@ -336,7 +337,8 @@ router.get('/upcoming-tasks', async (req, res) => {
     })
     .sort({ date: 1, priorityRank: 1 }) // Overdue first
     .limit(10)
-    .select('title priority date');
+    .select('title priority date')
+    .lean();
 
 
     // Format for frontend

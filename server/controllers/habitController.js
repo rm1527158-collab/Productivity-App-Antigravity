@@ -3,7 +3,7 @@ const HabitOccurrence = require('../models/HabitOccurrence');
 
 exports.getHabits = async (req, res) => {
   try {
-    const habits = await Habit.find({ userId: req.user._id, active: true });
+    const habits = await Habit.find({ userId: req.user._id, active: true }).lean();
     res.json(habits);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -17,7 +17,7 @@ exports.getOccurrences = async (req, res) => {
         if (start && end) {
             query.dateUTC = { $gte: new Date(start), $lte: new Date(end) };
         }
-        const occurrences = await HabitOccurrence.find(query);
+        const occurrences = await HabitOccurrence.find(query).lean();
         res.json(occurrences);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -187,8 +187,8 @@ const computeStreak = (habit, occurrences) => {
 exports.getStreaks = async (req, res) => {
   try {
     const userId = req.user._id;
-    const habits = await Habit.find({ userId, active: true });
-    const occurrences = await HabitOccurrence.find({ userId });
+    const habits = await Habit.find({ userId, active: true }).lean();
+    const occurrences = await HabitOccurrence.find({ userId }).select('habitId dateUTC').lean();
 
     const streaks = {};
     for (const habit of habits) {
