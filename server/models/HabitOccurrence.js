@@ -24,6 +24,9 @@ const habitOccurrenceSchema = new mongoose.Schema({
   timestamps: { createdAt: true, updatedAt: false }
 });
 
+// Index for dashboard habit stats
+habitOccurrenceSchema.index({ userId: 1, dateUTC: 1, completed: 1 });
+
 // Ensure one occurrence record per habit per day (if that's the minimal granularity)
 // Though the spec doesn't explicitly forbid multiple, usually extensive logic implies checking existence.
 // Sticking to basic schema for now.

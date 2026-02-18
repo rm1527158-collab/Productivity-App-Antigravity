@@ -48,156 +48,199 @@ router.get('/summary', async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // 1. Today completion % (completed / total daily tasks including overdue)
-    const dailyStats = await Task.aggregate([
-        { 
-          $match: { 
-            userId, 
-            scope: 'daily', 
+
+    // ... (Previous setup code: userId, today, etc.)
+
+    // EXECUTE QUERIES IN PARALLEL
+    const [
+      dailyStats,
+      sectionStats,
+      completionTrend,
+      habitsToday,
+      taskActivity,
+      habitActivity,
+      weeklyProgress,
+      categoryStats,
+      highPriorityCount,
+      pendingTasksRaw,
+      allActiveHabits,
+      completedHabitIds,
+      allOccurrences
+    ] = await Promise.all([
+        // 1. Daily Stats
+        Task.aggregate([
+            { 
+              $match: { 
+                userId, 
+                scope: 'daily', 
+                $or: [
+                  { date: today },
+                  { date: { $lt: today }, completed: false }
+                ]
+              } 
+            },
+            { $group: {
+                _id: null,
+                total: { $sum: 1 },
+                completed: { $sum: { $cond: ["$completed", 1, 0] } }
+            }}
+        ]),
+
+        // 2. Section Stats
+        Task.aggregate([
+            { $match: { userId, scope: 'daily', date: today } },
+            { $group: { _id: "$section", count: { $sum: 1 } } }
+        ]),
+
+        // 3. Completion Trend (30 days)
+        Task.aggregate([
+            { $match: { userId, scope: 'daily', date: { $gte: (() => { const d = new Date(today); d.setDate(d.getDate() - 30); return d; })(), $lte: today } } },
+            { $group: {
+                _id: "$date",
+                completedCount: { $sum: { $cond: ["$completed", 1, 0] } },
+                totalCount: { $sum: 1 }
+            }},
+            { $sort: { _id: 1 } }
+        ]),
+
+        // 4. Habits Today Count
+        HabitOccurrence.countDocuments({
+            userId,
+            dateUTC: today,
+            completed: true
+        }),
+
+        // 5a. Task Activity (365 days)
+        Task.aggregate([
+            { 
+              $match: { 
+                userId, 
+                completed: true, 
+                date: { $gte: (() => { const d = new Date(today); d.setDate(d.getDate() - 365); return d; })(), $lte: today },
+                scope: 'daily' 
+              } 
+            },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                count: { $sum: 1 }
+              }
+            }
+        ]),
+
+        // 5b. Habit Activity (365 days)
+        HabitOccurrence.aggregate([
+            {
+              $match: {
+                userId,
+                completed: true,
+                dateUTC: { $gte: (() => { const d = new Date(today); d.setDate(d.getDate() - 365); return d; })(), $lte: today }
+              }
+            },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$dateUTC" } },
+                count: { $sum: 1 }
+              }
+            }
+        ]),
+
+        // 6. Weekly Progress
+        Task.aggregate([
+            {
+              $match: {
+                userId,
+                completed: true,
+                date: { $gte: (() => { const d = new Date(today); d.setDate(d.getDate() - 6); return d; })(), $lte: today },
+                scope: 'daily'
+              }
+            },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                value: { $sum: 1 }
+              }
+            },
+            { $sort: { _id: 1 } }
+        ]),
+
+        // 7. Category Focus
+        Task.aggregate([
+            {
+              $match: {
+                userId,
+                date: { $gte: (() => { const d = new Date(today); d.setDate(d.getDate() - 6); return d; })(), $lte: today },
+                scope: 'daily'
+              }
+            },
+            {
+              $group: {
+                _id: "$section",
+                count: { $sum: 1 }
+              }
+            }
+        ]),
+
+        // 8. High Priority Count
+        Task.countDocuments({
+            userId,
+            scope: 'daily',
+            completed: false,
             $or: [
               { date: today },
-              { date: { $lt: today }, completed: false }
-            ]
-          } 
-        },
-        { $group: {
-            _id: null,
-            total: { $sum: 1 },
-            completed: { $sum: { $cond: ["$completed", 1, 0] } }
-        }}
-    ]);
+              { date: { $lt: today } }
+            ],
+            priority: { $in: ['critical', 'high'] }
+        }),
 
-
-    // 2. Task count by section (Pie Chart) - Active tasks only? Or all? Spec says "Task count by section".
-    // Usually means for Today? Or All backlog? "Dashboard shows visual aggregates...".
-    // Let's assume Today's Breakdown.
-    const sectionStats = await Task.aggregate([
-        { $match: { userId, scope: 'daily', date: today } },
-        { $group: { _id: "$section", count: { $sum: 1 } } }
-    ]);
-
-    // 3. 30-day completion trend (Line Chart)
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const completionTrend = await Task.aggregate([
-        { $match: { userId, scope: 'daily', date: { $gte: thirtyDaysAgo, $lte: today } } },
-        { $group: {
-            _id: "$date",
-            completedCount: { $sum: { $cond: ["$completed", 1, 0] } },
-            totalCount: { $sum: 1 }
-        }},
-        { $sort: { _id: 1 } }
-    ]);
-
-    // 4. Habit streak summary & Activity Heatmap
-    // Return total habits completed today
-    const habitsToday = await HabitOccurrence.countDocuments({
-        userId,
-        dateUTC: today,
-        completed: true
-    });
-
-    // 5. Activity Heatmap (Last 365 days)
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-
-    // Aggregate completed tasks by day
-    const taskActivity = await Task.aggregate([
-        { 
-          $match: { 
-            userId, 
-            completed: true, 
-            date: { $gte: oneYearAgo, $lte: today },
-            scope: 'daily' // Only count daily tasks for now to avoid skewing with subtasks/project tasks if they exist
-          } 
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-            count: { $sum: 1 }
-          }
-        }
-    ]);
-
-    // Aggregate completed habits by day
-    const habitActivity = await HabitOccurrence.aggregate([
-        {
-          $match: {
+        // 9. Pending Tasks (Limit 2)
+        Task.find({
             userId,
-            completed: true,
-            dateUTC: { $gte: oneYearAgo, $lte: today }
-          }
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$dateUTC" } },
-            count: { $sum: 1 }
-          }
-        }
+            scope: 'daily',
+            completed: false,
+            $or: [
+              { date: today },
+              { date: { $lt: today } }
+            ]
+        })
+        .sort({ date: 1, priorityRank: 1 })
+        .limit(2)
+        .select('title priority section date'),
+
+        // 10a. Active Habits
+        require('../models/Habit').find({ userId, active: true }),
+
+        // 10b. Completed Habit IDs for Today
+        HabitOccurrence.find({
+            userId,
+            dateUTC: today,
+            completed: true
+        }).distinct('habitId'),
+
+        // 10c. All Occurrences (for streaks) - Potentially heavy, but needed for streaks
+        HabitOccurrence.find({ userId })
     ]);
 
-    // Merge into a map with separate task and habit counts
+    // ... (Processing logic remains similar but uses the results above)
+
+    // Activity Map Processing
     const activityMap = new Map();
-    
     taskActivity.forEach(item => {
         const existing = activityMap.get(item._id) || { date: item._id, taskCount: 0, habitCount: 0 };
         existing.taskCount = item.count;
         activityMap.set(item._id, existing);
     });
-
     habitActivity.forEach(item => {
         const existing = activityMap.get(item._id) || { date: item._id, taskCount: 0, habitCount: 0 };
         existing.habitCount = item.count;
         activityMap.set(item._id, existing);
     });
-
-    // Convert map to array for frontend
     const activityHeatmap = Array.from(activityMap.values());
 
-    // 6. Weekly Progress (Last 7 days including today)
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // 7 days total including today
-
-    const weeklyProgress = await Task.aggregate([
-        {
-          $match: {
-            userId,
-            completed: true,
-            date: { $gte: sevenDaysAgo, $lte: today },
-            scope: 'daily'
-          }
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-            value: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-    ]);
-
-    // Transform to array with date property
+    // Weekly Progress Processing
     const weeklyProgressData = weeklyProgress.map(item => ({ date: item._id, value: item.value }));
 
-    // 7. Category Focus (Tasks per section from last 7 days)
-    const categoryStats = await Task.aggregate([
-        {
-          $match: {
-            userId,
-            date: { $gte: sevenDaysAgo, $lte: today },
-            scope: 'daily'
-          }
-        },
-        {
-          $group: {
-            _id: "$section",
-            count: { $sum: 1 }
-          }
-        }
-    ]);
-
-    // Transform to radar chart format
+    // Category Focus Processing
     const sectionNames = {
       topPriority: "Top Priority",
       secondary: "Secondary",
@@ -206,57 +249,20 @@ router.get('/summary', async (req, res) => {
       could: "Could Have",
       wont: "Won't Have"
     };
-
     const categoryFocus = categoryStats.map(item => ({
       subject: sectionNames[item._id] || item._id,
       A: item.count,
-      fullMark: Math.max(...categoryStats.map(s => s.count)) || 10 // Dynamic max or default 10
+      fullMark: Math.max(...categoryStats.map(s => s.count)) || 10
     }));
 
-    // 8. Header stats: High priority count (including overdue)
-    const highPriorityCount = await Task.countDocuments({
-        userId,
-        scope: 'daily',
-        completed: false,
-        $or: [
-          { date: today },
-          { date: { $lt: today } }
-        ],
-        priority: { $in: ['critical', 'high'] }
-    });
-
-
-    const pendingTasksRaw = await Task.find({
-        userId,
-        scope: 'daily',
-        completed: false,
-        $or: [
-          { date: today },
-          { date: { $lt: today } }
-        ]
-    })
-    .sort({ date: 1, priorityRank: 1 }) // Overdue first
-    .limit(2)
-    .select('title priority section date');
-
+    // Pending Tasks Processing
     const pendingTasks = pendingTasksRaw.map(task => ({
         ...task.toObject(),
         isOverdue: new Date(task.date) < today
     }));
 
-
-    // 10. Habits to complete list
-    const allActiveHabits = await require('../models/Habit').find({ userId, active: true });
-    const completedHabitIds = await HabitOccurrence.find({
-        userId,
-        dateUTC: today,
-        completed: true
-    }).distinct('habitId');
-
-    // Compute real streaks
+    // Habits Processing
     const { computeStreak } = require('../controllers/habitController');
-    const allOccurrences = await HabitOccurrence.find({ userId });
-
     const habitsToCompleteList = allActiveHabits
         .filter(h => isHabitDue(h, today))
         .filter(h => !completedHabitIds.some(id => id.toString() === h._id.toString()))
@@ -271,8 +277,7 @@ router.get('/summary', async (req, res) => {
         .filter(h => !completedHabitIds.some(id => id.toString() === h._id.toString()))
         .length;
 
-
-    // 11. Focus Score Calculation
+    // Focus Score Processing
     const totalHabits = allActiveHabits.length;
     const completedTasks = dailyStats[0]?.completed || 0;
     const totalTasks = dailyStats[0]?.total || 0;

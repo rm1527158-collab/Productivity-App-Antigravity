@@ -40,10 +40,17 @@ const connectDB = async () => {
   try {
     let mongoUri = process.env.MONGO_URI;
     
-    // Use in-memory database if no MONGO_URI is provided or if USE_MEMORY_DB is true
-    if (!mongoUri || process.env.USE_MEMORY_DB === 'true') {
-      console.log('Using MongoDB Memory Server for local development...');
-      mongoUri = await initMemoryDB();
+    // In production, we must have a MONGO_URI
+    if (process.env.NODE_ENV === 'production') {
+      if (!mongoUri) {
+        throw new Error('MONGODB_URI is not defined in environment variables.');
+      }
+    } else {
+        // Use in-memory database if no MONGO_URI is provided or if USE_MEMORY_DB is true (dev only)
+        if (!mongoUri || process.env.USE_MEMORY_DB === 'true') {
+          console.log('Using MongoDB Memory Server for local development...');
+          mongoUri = await initMemoryDB();
+        }
     }
     
     const conn = await mongoose.connect(mongoUri);

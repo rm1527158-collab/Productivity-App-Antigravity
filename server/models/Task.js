@@ -92,6 +92,9 @@ taskSchema.index(
   { unique: true, partialFilterExpression: { section: "topPriority", scope: "daily" } }
 );
 
+// Compound index for dashboard queries (filtering by scope and date range)
+taskSchema.index({ userId: 1, scope: 1, date: 1 });
+
 // Partial unique index for topPriority per bucket (non-daily)
 taskSchema.index(
   { userId: 1, periodStart: 1, section: 1 },
