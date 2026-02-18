@@ -33,9 +33,11 @@ let cachedConn = null;
  * Connect to database (either memory server or external MongoDB)
  */
 const connectDB = async () => {
-  if (cachedConn) {
+  // Check if we have a connection AND it is ready (state 1 = connected)
+  if (cachedConn && mongoose.connection.readyState === 1) {
     return cachedConn;
   }
+
 
   try {
     let mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
@@ -53,7 +55,12 @@ const connectDB = async () => {
         }
     }
     
-    const conn = await mongoose.connect(mongoUri);
+    const opts = {
+        serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+        socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    };
+
+    const conn = await mongoose.connect(mongoUri, opts);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     console.log(`Database: ${conn.connection.name}`);
     
