@@ -219,7 +219,27 @@ router.get('/summary', async (req, res) => {
         }).distinct('habitId'),
 
         // 10c. All Occurrences (for streaks) - Optimized
-        HabitOccurrence.find({ userId }).select('habitId dateUTC').lean()
+        // Calculate earliest start date to avoid fetching entire history
+        (() => {
+            const earliestStart = allActiveHabits.reduce((min, h) => {
+                const d = new Date(h.startDate);
+                return d < min ? d : min;
+            }, new Date(today)); // Default to today if no habits
+            
+            // Go back a bit further just in case streaks need buffer (e.g. 365 days)
+            // Actually, streak calculation walks backwards. If we want accurate streaks for long-running habits, 
+            // we technically need history. 
+            // COMPROMISE: Fetch last 365 days. Users with >1 year streaks might see "365+" or we accept the limit.
+            // OR checks generic "active" habits. 
+            // Let's fetch last 365 days for now to keep payload sane.
+            const queryDate = new Date(today);
+            queryDate.setDate(queryDate.getDate() - 365);
+            
+            return HabitOccurrence.find({ 
+                userId,
+                dateUTC: { $gte: queryDate }
+            }).select('habitId dateUTC').lean();
+        })()
     ]);
 
     // ... (Processing logic remains similar but uses the results above)
