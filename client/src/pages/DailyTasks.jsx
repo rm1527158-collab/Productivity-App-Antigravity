@@ -26,8 +26,9 @@ const DailyTasks = () => {
     const doRollover = async () => {
       try {
         const { data } = await api.post('/tasks/rollover', { date: format(new Date(), 'yyyy-MM-dd') });
-        if (data.count > 0) {
-          setRolloverCount(data.count);
+        const totalRolled = data.stats ? Object.values(data.stats).reduce((a, b) => a + b, 0) : 0;
+        if (totalRolled > 0) {
+          setRolloverCount(totalRolled);
           fetchTasks();
         }
       } catch (err) {
@@ -56,12 +57,12 @@ const DailyTasks = () => {
   };
 
   const toggleTask = async (task) => {
-    try { await api.put(`/tasks/${task._id}`, { completed: !task.completed, version: task.version }); fetchTasks(); } catch { alert("Failed"); }
+    try { await api.put(`/tasks/${task._id}`, { completed: !task.completed, version: task.version }); fetchTasks(); } catch (e) { alert(e.response?.data?.message || "Failed to toggle task"); }
   };
 
   const deleteTask = async (id) => {
     if (!confirm("Delete?")) return;
-    try { await api.delete(`/tasks/${id}`); fetchTasks(); } catch { alert("Failed"); }
+    try { await api.delete(`/tasks/${id}`); fetchTasks(); } catch (e) { alert(e.response?.data?.message || "Failed to delete task"); }
   };
 
   const moveTask = async (task, dir) => {

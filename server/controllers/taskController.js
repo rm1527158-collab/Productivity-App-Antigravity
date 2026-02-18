@@ -62,6 +62,7 @@ exports.createTask = async (req, res) => {
         res.status(201).json(savedTask);
     
     } catch (err) {
+        console.error("Create task ERROR:", err);
         res.status(400).json({ message: err.message });
     }
 };

@@ -70,7 +70,8 @@ const Settings = () => {
       
       setTimeout(() => setFeedback(null), 3000);
     } catch (err) {
-      setFeedback({ type: 'error', message: 'Failed to update profile.' });
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to update profile.';
+      setFeedback({ type: 'error', message: errorMsg });
     } finally {
       setSaving(false);
     }

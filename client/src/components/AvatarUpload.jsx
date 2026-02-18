@@ -50,8 +50,23 @@ const AvatarUpload = ({ currentAvatar, onAvatarChange }) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
+    // Define target size (max 800x800)
+    const MAX_SIZE = 800;
+    let targetWidth = pixelCrop.width;
+    let targetHeight = pixelCrop.height;
+
+    if (targetWidth > MAX_SIZE || targetHeight > MAX_SIZE) {
+      if (targetWidth > targetHeight) {
+        targetHeight = (MAX_SIZE / targetWidth) * targetHeight;
+        targetWidth = MAX_SIZE;
+      } else {
+        targetWidth = (MAX_SIZE / targetHeight) * targetWidth;
+        targetHeight = MAX_SIZE;
+      }
+    }
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
 
     ctx.drawImage(
       image,
@@ -61,8 +76,8 @@ const AvatarUpload = ({ currentAvatar, onAvatarChange }) => {
       pixelCrop.height,
       0,
       0,
-      pixelCrop.width,
-      pixelCrop.height
+      targetWidth,
+      targetHeight
     );
 
     return new Promise((resolve) => {
@@ -72,7 +87,7 @@ const AvatarUpload = ({ currentAvatar, onAvatarChange }) => {
           resolve(reader.result);
         };
         reader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.85); // Slightly lower quality to save bandwidth
     });
   };
 
