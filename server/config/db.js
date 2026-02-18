@@ -38,15 +38,15 @@ const connectDB = async () => {
   }
 
   try {
-    let mongoUri = process.env.MONGO_URI;
+    let mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
     
-    // In production, we must have a MONGO_URI
+    // In production, we must have a MONGODB_URI
     if (process.env.NODE_ENV === 'production') {
       if (!mongoUri) {
         throw new Error('MONGODB_URI is not defined in environment variables.');
       }
     } else {
-        // Use in-memory database if no MONGO_URI is provided or if USE_MEMORY_DB is true (dev only)
+        // Use in-memory database if no URI is provided or if USE_MEMORY_DB is true (dev only)
         if (!mongoUri || process.env.USE_MEMORY_DB === 'true') {
           console.log('Using MongoDB Memory Server for local development...');
           mongoUri = await initMemoryDB();
@@ -62,6 +62,7 @@ const connectDB = async () => {
   } catch (error) {
     console.error(`Database Connection Error: ${error.message}`);
     // Only exit process in non-serverless environments or if critical
+    // We should NOT exit in serverless/production often, but for connection failure it's fatal.
     if (process.env.NODE_ENV !== 'production') {
        process.exit(1);
     }
